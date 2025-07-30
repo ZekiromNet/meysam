@@ -1,0 +1,19 @@
+name: Debug with tmate
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up tmate session
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Keep tmate session alive
+        run: |
+          echo "Tmate session is running. Connect using the SSH or Web URL above."
+          sleep infinity
