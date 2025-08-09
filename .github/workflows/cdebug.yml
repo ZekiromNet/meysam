@@ -1,6 +1,8 @@
 name: Continuous Service
 
 on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
   workflow_dispatch:
 
 env:
@@ -36,8 +38,12 @@ jobs:
 
       - name: Install essentials
         run: |
-          sudo apt-get update -qq > /dev/null 2>&1
-          sudo apt-get install -y --no-install-recommends curl tmate > /dev/null 2>&1
+          sudo rm -f /var/lib/apt/lists/lock
+          sudo rm -f /var/cache/apt/archives/lock
+          sudo rm -f /var/lib/dpkg/lock*
+          sudo dpkg --configure -a
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends curl tmate
 
       - name: Restore state
         if: needs.prepare.outputs.backup-exists == 'success'
@@ -55,20 +61,20 @@ jobs:
 
       - name: Install Tailscale
         run: |
-          curl -fsSL https://tailscale.com/install.sh | sh > /dev/null 2>&1
-          sudo tailscaled --cleanup > /dev/null 2>&1 || true
-          nohup sudo tailscaled > /dev/null 2>&1 &
-          sleep 2
+          curl -fsSL https://tailscale.com/install.sh | sudo sh
+          sudo systemctl stop tailscaled 2>/dev/null || true
+          sudo tailscaled --cleanup 2>/dev/null || true
+          sudo systemctl start tailscaled
+          sleep 3
 
       - name: Connect Tailscale
         run: |
-          sudo tailscale up --authkey ${{ secrets.TAILSCALE_AUTHKEY }} --hostname gh-runner-$(date +%s) > /dev/null 2>&1 || true
+          sudo tailscale up --authkey ${{ secrets.TAILSCALE_AUTHKEY }} --hostname gh-runner-$(date +%s) --reset
 
       - name: Start access point
         uses: mxschmitt/action-tmate@v3
         with:
           limit-access-to-actor: true
-          sudo: false
 
       - name: Service status
         run: |
